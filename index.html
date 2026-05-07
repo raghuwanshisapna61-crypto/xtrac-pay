@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>XTRAC PAY</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; color: #1e293b; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+        
+        .tap:active { transform: scale(0.95); transition: transform 0.1s; }
+        .app-screen { min-height: 100vh; width: 100%; background-color: #f8fafc; }
+        input, textarea, select { color: #1e293b !important; }
+        input::placeholder, textarea::placeholder { color: #94a3b8; }
+        
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .fade-up { animation: fadeUpAnim 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(20px); }
+        .delay-1 { animation-delay: 0.1s; } .delay-2 { animation-delay: 0.2s; } .delay-3 { animation-delay: 0.3s; }
+        @keyframes fadeUpAnim { to { opacity: 1; transform: translateY(0); } }
+
+        .header-bg { background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); position: relative; overflow: hidden; }
+        .header-bg::before { content: ''; position: absolute; width: 300px; height: 300px; background: rgba(255,255,255,0.05); border-radius: 50%; top: -100px; right: -100px; }
+        .header-bg::after { content: ''; position: absolute; width: 200px; height: 200px; background: rgba(255,255,255,0.05); border-radius: 50%; bottom: -50px; left: -50px; }
+
+        #global-loader { position: fixed; inset: 0; background: #ffffff; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .loader-wheel { border: 4px solid #e2e8f0; border-left-color: #4f46e5; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        #scratch-canvas { background: #cbd5e1; border-radius: 1rem; width: 100%; height: 150px; cursor: crosshair; }
+        .coin-toss-anim { animation: flip 2s ease-in-out forwards; }
+        @keyframes flip { 0% { transform: rotateY(0deg) scale(1); } 50% { transform: rotateY(1800deg) scale(1.5); } 100% { transform: rotateY(3600deg) scale(1); } }
+    </style>
+</head>
+<body class="max-w-md mx-auto relative shadow-2xl bg-white min-h-screen">
+
+<div id="global-loader">
+    <div class="loader-wheel"></div>
+    <p class="text-indigo-600 font-bold text-[10px] tracking-[0.2em] mt-4 uppercase animate-pulse">Initializing</p>
+</div>
+
+<div id="main-dashboard" class="app-screen hidden pb-24 bg-slate-50">
+    <div class="header-bg pt-8 pb-20 px-6 rounded-b-[2.5rem] shadow-md z-0 relative">
+        <div class="flex justify-between items-center relative z-10">
+            <div class="flex items-center gap-3">
+                <div onclick="document.getElementById('sidebar').classList.remove('-translate-x-full')" class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center tap cursor-pointer text-white border border-white/20">
+                    <i class="fa-solid fa-bars-staggered"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] text-indigo-200 font-bold uppercase tracking-widest">Welcome Back</p>
+                    <h1 class="text-sm font-black text-white tracking-wide" id="dash-user-name">User</h1>
+                </div>
+            </div>
+            <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-indigo-600 shadow-sm tap" onclick="showScreen('profile-screen')">
+                <i class="fa-solid fa-user"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="px-6 -mt-12 relative z-10 fade-up">
+        <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-6 border border-slate-100 flex items-center justify-between">
+            <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1"><i class="fa-solid fa-wallet text-indigo-400 mr-1"></i> Available Balance</p>
+                <h1 id="main-balance" class="text-3xl font-black text-slate-800 tracking-tight">₹0.00</h1>
+            </div>
+            <button onclick="startSync()" class="w-10 h-10 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center tap hover:bg-slate-100 hover:text-indigo-600 transition">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="mt-8 px-6 fade-up delay-1">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xs font-black text-slate-800 uppercase tracking-widest">Quick Actions</h3>
+        </div>
+        <div class="flex gap-4 overflow-x-auto hide-scroll pb-4">
+            <div onclick="showScreen('add-fund')" class="min-w-[80px] flex flex-col items-center tap cursor-pointer group">
+                <div class="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-2 group-hover:bg-indigo-600 transition-colors shadow-sm">
+                    <i class="fa-solid fa-plus text-indigo-600 text-xl group-hover:text-white transition-colors"></i>
+                </div>
+                <span class="text-[9px] font-bold text-slate-600 tracking-wider">Deposit</span>
+            </div>
+            <div onclick="showScreen('withdraw-screen')" class="min-w-[80px] flex flex-col items-center tap cursor-pointer group">
+                <div class="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mb-2 group-hover:bg-emerald-500 transition-colors shadow-sm">
+                    <i class="fa-solid fa-building-columns text-emerald-600 text-xl group-hover:text-white transition-colors"></i>
+                </div>
+                <span class="text-[9px] font-bold text-slate-600 tracking-wider">Withdraw</span>
+            </div>
+            <div onclick="showScreen('pay-screen')" class="min-w-[80px] flex flex-col items-center tap cursor-pointer group">
+                <div class="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center mb-2 group-hover:bg-purple-500 transition-colors shadow-sm">
+                    <i class="fa-solid fa-paper-plane text-purple-600 text-xl group-hover:text-white transition-colors"></i>
+                </div>
+                <span class="text-[9px] font-bold text-slate-600 tracking-wider">Pay</span>
+            </div>
+            <div onclick="document.getElementById('bulk-balance-display').innerText = '₹' + (window.currentUser?.balance||0); showScreen('bulk-screen');" class="min-w-[80px] flex flex-col items-center tap cursor-pointer group">
+                <div class="w-14 h-14 bg-sky-50 rounded-2xl flex items-center justify-center mb-2 group-hover:bg-sky-500 transition-colors shadow-sm">
+                    <i class="fa-solid fa-layer-group text-sky-600 text-xl group-hover:text-white transition-colors"></i>
+                </div>
+                <span class="text-[9px] font-bold text-slate-600 tracking-wider">Bulk Pay</span>
+            </div>
+            <div onclick="showScreen('claim-screen')" class="min-w-[80px] flex flex-col items-center tap cursor-pointer group">
+                <div class="w-14 h-14 bg-pink-50 rounded-2xl flex items-center justify-center mb-2 group-hover:bg-pink-500 transition-colors shadow-sm">
+                    <i class="fa-solid fa-gift text-pink-500 text-xl group-hover:text-white transition-colors"></i>
+                </div>
+                <span class="text-[9px] font-bold text-slate-600 tracking-wider">Gift Code</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="px-6 mt-4 fade-up delay-2">
+        <button onclick="showScreen('lifafa-manager-screen'); loadMyLifafas();" class="w-full bg-gradient-to-br from-red-500 to-orange-500 p-6 rounded-3xl flex items-center justify-between tap shadow-lg shadow-red-500/30 overflow-hidden relative border border-red-400">
+            <div class="absolute right-[-20px] top-[-20px] opacity-10 text-9xl"><i class="fa-solid fa-envelope-open-text"></i></div>
+            <div class="text-left relative z-10 text-white">
+                <span class="text-xs font-bold uppercase tracking-widest text-red-100 mb-1 block">Giveaway Platform</span>
+                <span class="text-lg font-black block">Lifafa System</span>
+            </div>
+            <div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white relative z-10">
+                <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </button>
+    </div>
+
+    <div class="px-6 mt-8 fade-up delay-3">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xs font-black text-slate-800 uppercase tracking-widest">Recent Activity</h3>
+            <button onclick="switchHistoryTab('ALL'); showScreen('history-screen')" class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full tap">View All</button>
+        </div>
+        <div id="dashboard-history-list" class="space-y-3 min-h-[100px]">
+            <p class="text-xs text-center text-slate-400 font-bold py-6 uppercase tracking-widest animate-pulse">Loading...</p>
+        </div>
+    </div>
+</div>
+
+<div id="sidebar" class="fixed inset-y-0 left-0 w-[80%] max-w-sm bg-white z-[1000] shadow-2xl transform -translate-x-full transition-transform duration-300 rounded-r-[2rem] border-r border-slate-100">
+    <div class="p-8 pb-6 flex justify-between items-center bg-slate-50 rounded-tr-[2rem]">
+        <div>
+            <h2 class="font-black text-lg text-indigo-600 uppercase tracking-widest">Menu</h2>
+            <p class="text-[9px] font-bold text-slate-400 tracking-wider">Virtual Wallet Options</p>
+        </div>
+        <div onclick="document.getElementById('sidebar').classList.add('-translate-x-full')" class="w-8 h-8 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-500 cursor-pointer tap shadow-sm"><i class="fa-solid fa-xmark"></i></div>
+    </div>
+    <div class="p-6 space-y-2">
+        <div onclick="showScreen('profile-screen')" class="p-4 bg-white rounded-2xl flex items-center gap-4 text-xs font-bold text-slate-700 uppercase cursor-pointer hover:bg-slate-50 transition border border-transparent hover:border-slate-100 tap"><i class="fa-solid fa-user text-indigo-500 text-lg w-6"></i> My Profile</div>
+        <div onclick="showScreen('api-screen')" class="p-4 bg-white rounded-2xl flex items-center gap-4 text-xs font-bold text-slate-700 uppercase cursor-pointer hover:bg-slate-50 transition border border-transparent hover:border-slate-100 tap"><i class="fa-solid fa-code text-purple-500 text-lg w-6"></i> Developer API</div>
+        <div onclick="showScreen('pin-screen')" class="p-4 bg-white rounded-2xl flex items-center gap-4 text-xs font-bold text-slate-700 uppercase cursor-pointer hover:bg-slate-50 transition border border-transparent hover:border-slate-100 tap"><i class="fa-solid fa-lock text-emerald-500 text-lg w-6"></i> Security PIN</div>
+        
+        <div class="my-4 border-t border-slate-100"></div>
+
+        <div onclick="window.open('https://t.me/BOTS_BY_ROHIT', '_blank')" class="p-4 bg-indigo-50 rounded-2xl flex items-center gap-4 text-xs font-bold text-indigo-600 uppercase cursor-pointer tap"><i class="fa-brands fa-telegram text-xl w-6"></i> Official Channel</div>
+        <div onclick="window.open('https://t.me/KRISHNNAAX007', '_blank')" class="p-4 bg-orange-50 rounded-2xl flex items-center gap-4 text-xs font-bold text-orange-600 uppercase cursor-pointer tap mt-2"><i class="fa-solid fa-headset text-xl w-6"></i> Help & Support</div>
+
+        <div onclick="localStorage.clear(); location.href = location.origin;" class="p-4 bg-red-50 text-red-600 rounded-2xl flex items-center gap-4 text-xs font-bold uppercase cursor-pointer mt-8 border border-red-100 tap"><i class="fa-solid fa-power-off text-lg w-6"></i> Secure Logout</div>
+    </div>
+</div>
+
+<div id="auth-screen" class="app-screen hidden fixed inset-0 bg-slate-50 p-6 flex flex-col justify-center items-center z-[999]">
+    <div class="w-full max-w-sm bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200 border border-slate-100 text-center">
+        <div class="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[1.5rem] flex items-center justify-center text-4xl mx-auto mb-6 transform rotate-3"><i class="fa-solid fa-wallet -rotate-3"></i></div>
+        <h1 class="text-2xl font-black text-slate-800 uppercase tracking-widest mb-1">Xtrac Pay</h1>
+        <p class="text-[10px] text-slate-400 font-bold tracking-widest mb-8 uppercase">Secure Access Login</p>
+        
+        <div class="space-y-4 text-left">
+            <div class="bg-slate-50 rounded-2xl p-2 border border-slate-100 focus-within:border-indigo-500 transition-colors flex items-center px-4">
+                <i class="fa-solid fa-phone text-slate-400 mr-3"></i>
+                <span class="text-slate-500 font-bold text-sm pr-2 border-r border-slate-200">+91</span>
+                <input type="number" id="login-phone" placeholder="Mobile Number" class="w-full bg-transparent py-3 pl-3 text-sm font-bold text-slate-800 focus:outline-none" oninput="if(this.value.length>10)this.value=this.value.slice(0,10);">
+            </div>
+            <div class="bg-slate-50 rounded-2xl p-2 border border-slate-100 focus-within:border-indigo-500 transition-colors flex items-center px-4">
+                <i class="fa-solid fa-lock text-slate-400 mr-3"></i>
+                <input id="login-pass" type="password" placeholder="Password" class="w-full bg-transparent py-3 text-sm font-bold text-slate-800 focus:outline-none">
+            </div>
+            <button onclick="handleLogin()" class="w-full bg-indigo-600 text-white font-black uppercase tracking-widest rounded-2xl py-4 mt-2 shadow-lg shadow-indigo-600/30 tap transition">Login to Account</button>
+            <div class="text-center mt-6">
+                <button onclick="showScreen('register-screen')" class="text-indigo-600 font-bold text-xs uppercase tracking-widest hover:text-indigo-800 transition">Create New Account</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="register-screen" class="app-screen hidden fixed inset-0 bg-slate-50 p-6 flex flex-col justify-center items-center z-[999] overflow-y-auto">
+    <div class="w-full max-w-sm bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200 border border-slate-100 text-center my-auto">
+        <h1 class="text-xl font-black text-indigo-600 uppercase tracking-widest mb-1">Create Account</h1>
+        <p class="text-[10px] text-slate-400 font-bold tracking-widest mb-6 uppercase">Join Xtrac Pay</p>
+
+        <div class="space-y-4 text-left">
+            <input type="text" id="reg-name" placeholder="Full Name" class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:border-indigo-500 transition">
+            <div class="bg-slate-50 rounded-2xl border border-slate-100 focus-within:border-indigo-500 transition flex items-center px-5 py-1">
+                <span class="text-slate-500 font-bold text-sm pr-3 border-r border-slate-200">+91</span>
+                <input type="number" id="reg-phone" placeholder="Mobile Number" class="w-full bg-transparent py-3 pl-3 text-sm font-bold text-slate-800 focus:outline-none" oninput="if(this.value.length>10)this.value=this.value.slice(0,10);">
+            </div>
+            <input type="password" id="reg-pass" placeholder="Create Password" class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:border-indigo-500 transition">
+            <input type="password" id="reg-pin" placeholder="Set 4-Digit PIN" maxlength="4" class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:border-indigo-500 transition text-center tracking-[1em]">
+            <button onclick="handleRegister()" class="w-full bg-slate-800 text-white font-black uppercase tracking-widest rounded-2xl py-4 mt-4 shadow-lg shadow-slate-300 tap transition">Register Now</button>
+            <div class="text-center pt-2">
+                <button onclick="showScreen('auth-screen')" class="text-slate-400 font-bold text-xs uppercase tracking-widest">Back to Login</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="pin-modal" class="fixed inset-0 bg-slate-900/80 z-[5000] hidden flex items-end sm:items-center justify-center sm:p-6 backdrop-blur-sm">
+    <div class="bg-white w-full max-w-sm rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 text-center shadow-2xl animate-[fadeUpAnim_0.3s_ease-out]">
+        <div class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-6 sm:hidden"></div>
+        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-shield-halved text-emerald-500 mr-1"></i> Security Verification</h3>
+        <input id="input-pin" type="password" readonly placeholder="••••" class="w-full bg-slate-50 p-5 mb-6 text-center text-3xl font-black text-indigo-600 rounded-2xl outline-none tracking-[0.5em] border border-slate-100">
+        
+        <div class="grid grid-cols-3 gap-3">
+            <button onclick="document.getElementById('input-pin').value+='1'" class="h-14 bg-slate-50 rounded-2xl text-xl font-bold text-slate-700 tap border border-slate-100">1</button>
+            <button onclick="document.getElementById('input-pin').value+='2'" class="h-14 bg-slate-50 rounded-2xl text-xl font-bold text-slate-700 tap border border-slate-100">2</button>
+            <button onclick="document.getElementById('input-pin').value+='3'" class="h-14 bg-slate-50 rounded-2xl text-xl font-bold text-slate-700 tap border border-slate-100">3</button>
+            <button onclick="document.getElementById('input-pin').value+='4'" class="h-14 bg-slate-50 rounded-2xl text-xl font-bold text-slate-700 tap border border-slate-100">4</button>
+            <button onclick="document.getElementById('input-pin').value+='5'" class="h-14 bg-slate-50 rounded-2xl text-xl font-bold text-slate-700 tap border border-slate-100">5</button>
+            <button onclick="document.getElementById('input-pin').value+='6'" class="h-14 bg-slate-50 rounded-2xl text-xl font-bold text-slate-700 tap border border-slate-100">6</button>
+            <button onclick="document.getElementById('input-pin').value+='7'" class="h-14 bg-slate-50 rounded-2xl text-xl font-bold text-slate-700 tap border border-slate-100">7</button>
+            <button onclick="document.getElementById('input-pin').value+='8'" class="h-14 bg-slate-50 rounded-2xl text-xl font-bold text-slate-700 tap border border-slate-100">8</button>
+            <button onclick="document.getElementById('input-pin').value+='9'" class="h-14 bg-slate-50 rounded-2xl text-xl font-bold text-slate-700 tap border border-slate-100">9</button>
+            <button onclick="document.getElementById('input-pin').value=''" class="h-14 bg-red-50 rounded-2xl text-xl font-black text-red-500 tap border border-red-100">C</button>
+            <button onclick="document.getElementById('input-pin').value+='0'" class="h-14 bg-slate-50 rounded-2xl text-xl font-bold text-slate-700 tap border border-slate-100">0</button>
+            <button onclick="handlePIN()" class="h-14 bg-indigo-600 rounded-2xl text-xl font-bold text-white shadow-lg tap shadow-indigo-600/40"><i class="fa-solid fa-check"></i></button>
+        </div>
+        <button onclick="document.getElementById('pin-modal').classList.add('hidden'); document.getElementById('input-pin').value='';" class="mt-6 text-[10px] font-black uppercase tracking-widest text-slate-400 py-2 px-4">Cancel</button>
+    </div>
+</div>
+
+<div id="receipt-modal" class="fixed inset-0 bg-slate-900/80 z-[6000] hidden flex items-center justify-center p-6 backdrop-blur-sm">
+    <div class="bg-white w-full max-w-sm rounded-[2rem] border border-slate-100 relative shadow-2xl animate-[fadeUpAnim_0.3s_ease-out] overflow-hidden">
+        <div id="receipt-header-bg" class="bg-emerald-500 pt-8 pb-10 text-center relative">
+            <button onclick="document.getElementById('receipt-modal').classList.add('hidden')" class="absolute top-4 right-4 w-8 h-8 bg-white/20 rounded-full text-white flex items-center justify-center tap"><i class="fa-solid fa-xmark"></i></button>
+            <div class="mx-auto h-16 w-16 bg-white rounded-full flex items-center justify-center mb-2 shadow-sm" id="receipt-icon-bg">
+                <i class="fa-solid fa-check text-emerald-500 text-2xl" id="receipt-icon"></i>
+            </div>
+            <h2 id="receipt-type" class="font-black uppercase text-white/80 tracking-widest text-[10px] mb-1">TRANSACTION</h2>
+            <h1 id="receipt-amt" class="text-4xl font-black text-white tracking-tight">₹0</h1>
+        </div>
+        <div class="p-6 bg-white -mt-6 rounded-t-[1.5rem] relative z-10">
+            <div class="text-center mb-6">
+                <span id="receipt-status" class="text-[10px] font-black px-4 py-1.5 rounded-md bg-slate-100 text-slate-600 uppercase tracking-widest border border-slate-200">SUCCESS</span>
+            </div>
+            <div class="space-y-4 text-sm font-medium text-slate-600">
+                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-3">
+                    <span class="text-slate-400 text-[10px] uppercase font-black tracking-widest">Date & Time</span>
+                    <span id="receipt-date" class="font-bold text-slate-800 text-xs">--</span>
+                </div>
+                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-3">
+                    <span class="text-slate-400 text-[10px] uppercase font-black tracking-widest">Sender</span>
+                    <span id="receipt-sender" class="font-bold text-slate-800 text-xs text-right max-w-[60%] truncate">--</span>
+                </div>
+                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-3">
+                    <span class="text-slate-400 text-[10px] uppercase font-black tracking-widest">Receiver</span>
+                    <span id="receipt-receiver" class="font-bold text-slate-800 text-xs text-right max-w-[60%] truncate">--</span>
+                </div>
+                <div class="flex justify-between items-center pb-2">
+                    <span class="text-slate-400 text-[10px] uppercase font-black tracking-widest">Transaction ID</span>
+                    <span id="receipt-id" class="font-bold text-slate-800 text-[10px] font-mono bg-slate-50 px-2 py-1 rounded border border-slate-100">--</span>
+                </div>
+                <div id="receipt-extra-div" class="hidden flex justify-between items-center pt-2 border-t border-dashed border-slate-200">
+                    <span class="text-slate-400 text-[10px] uppercase font-black tracking-widest">Additional Info</span>
+                    <span id="receipt-extra" class="font-bold text-indigo-600 text-xs text-right break-all max-w-[60%]">--</span>
+                </div>
+            </div>
+            <div class="mt-8 text-center">
+                <p class="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">Powered by Xtrac Pay</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="profile-screen" class="app-screen hidden p-6 space-y-6">
+    <div class="flex items-center fade-up">
+        <button onclick="showScreen('main-dashboard')" class="text-slate-600 bg-white w-10 h-10 rounded-xl flex items-center justify-center shadow-sm border border-slate-100 tap"><i class="fa-solid fa-arrow-left"></i></button>
+        <h2 class="ml-4 font-black text-slate-800 text-lg uppercase tracking-wide">My Profile</h2>
+    </div>
+    <div class="flex flex-col items-center text-center space-y-4 mt-8 fade-up delay-1">
+        <div class="w-28 h-28 bg-indigo-50 rounded-[2rem] flex items-center justify-center text-4xl text-indigo-600 shadow-sm border border-indigo-100 transform rotate-3"><i class="fa-solid fa-user -rotate-3"></i></div>
+        <div class="space-y-1">
+            <h2 id="profile-name-display" class="font-black text-2xl text-slate-800">Loading...</h2>
+            <p id="profile-phone-display" class="text-slate-500 font-bold text-sm bg-white border border-slate-200 px-4 py-1.5 rounded-lg shadow-sm inline-block font-mono"></p>
+        </div>
+    </div>
+    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm mt-8 fade-up delay-2">
+        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Edit Full Name</label>
+        <input type="text" id="edit-name-input" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold outline-none focus:border-indigo-500 mb-4 mt-2 transition" placeholder="Enter Name">
+        <button onclick="updateProfileName()" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg tap">Save Changes</button>
+    </div>
+</div>
+
+<div id="pin-screen" class="app-screen hidden p-6 flex flex-col justify-center text-center">
+    <div class="flex items-center mb-8 fade-up">
+        <button onclick="showScreen('main-dashboard')" class="text-slate-600 bg-white w-10 h-10 rounded-xl flex items-center justify-center shadow-sm border border-slate-100 tap"><i class="fa-solid fa-arrow-left"></i></button>
+        <h2 class="ml-4 font-black text-slate-800 text-lg uppercase tracking-wide">Security PIN</h2>
+    </div>
+    <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 fade-up delay-1">
+        <div class="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-[1.5rem] flex items-center justify-center text-3xl mx-auto mb-6"><i class="fa-solid fa-shield-halved"></i></div>
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Create a strong 4-digit PIN</p>
+        <input id="new-pin-val" type="password" maxlength="4" placeholder="••••" class="w-full bg-slate-50 border border-slate-100 p-4 mb-6 text-center rounded-2xl font-black tracking-[1em] text-2xl outline-none focus:border-emerald-500 transition">
+        <button onclick="updatePIN()" class="w-full bg-emerald-500 text-white p-4 rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-emerald-500/30 tap">Update PIN</button>
+    </div>
+</div>
+
+<div id="add-fund" class="app-screen hidden p-6 bg-slate-50 min-h-screen pb-24">
+    <div class="flex items-center mb-6 fade-up">
+        <button onclick="showScreen('main-dashboard')" class="text-slate-600 bg-white w-10 h-10 rounded-xl flex items-center justify-center shadow-sm border border-slate-100 tap"><i class="fa-solid fa-arrow-left"></i></button>
+        <h2 class="ml-4 font-black text-slate-800 text-lg uppercase tracking-wide">Add Money</h2>
+    </div>
+    <div class="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100 fade-up delay-1">
+        
+        <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 text-center mb-4 shadow-inner">
+            <p class="text-[10px] text-indigo-400 font-bold mb-2 uppercase tracking-widest"><i class="fa-brands fa-google-pay mr-1"></i> Scan or Pay to UPI</p>
+            <h3 id="user-deposit-upi" class="text-2xl font-black text-indigo-600 tracking-wide font-mono select-all">raghuwansiom3179@fam</h3>
+        </div>
+        
+        <button onclick="copyDepositUPI()" class="w-full bg-slate-800 hover:bg-slate-700 text-white transition py-4 rounded-2xl text-xs uppercase tracking-widest font-black shadow-lg shadow-slate-300 tap mb-8 flex justify-center items-center">
+            <i class="fa-regular fa-copy mr-2 text-lg"></i> Copy UPI ID
+        </button>
+
+        <div>
+            <h4 class="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest"><i class="fa-solid fa-list-check text-indigo-500 mr-1"></i> Deposit Details</h4>
+            <div class="space-y-4">
+                <input type="text" id="dep-utr" placeholder="12-Digit UTR Number" maxlength="12" class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:border-indigo-500 transition">
+                <input type="number" id="dep-amt" placeholder="Deposit Amount (Min ₹20)" class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:border-indigo-500 transition">
+                <button onclick="currentTask='DEPOSIT'; document.getElementById('pin-modal').classList.remove('hidden')" class="w-full bg-indigo-600 text-white font-black uppercase tracking-widest text-[11px] rounded-2xl py-4 mt-2 shadow-lg shadow-indigo-600/30 tap"><i class="fa-solid fa-paper-plane mr-1"></i> Submit Request</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="withdraw-screen" class="app-screen hidden p-6 bg-slate-50 min-h-screen pb-24">
+    <div class="flex items-center mb-6 fade-up">
+        <button onclick="showScreen('main-dashboard')" class="text-slate-600 bg-white w-10 h-10 rounded-xl flex items-center justify-center shadow-sm border border-slate-100 tap"><i class="fa-solid fa-arrow-left"></i></button>
+        <h2 class="ml-4 font-black text-slate-800 text-lg uppercase tracking-wide">Withdraw</h2>
+    </div>
+    <div class="bg-indigo-50 p-5 rounded-3xl shadow-inner border border-indigo-100 flex justify-between items-center mb-6 fade-up delay-1">
+        <span class="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Withdrawable Bal</span>
+        <span id="withdraw-avail-bal" class="text-xl font-black text-indigo-600">₹0.00</span> 
+    </div>
+    <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-5 fade-up delay-2">
+        <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Payout UPI ID</label>
+            <input id="withdraw-upi" type="text" placeholder="yourname@upi" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold text-sm outline-none focus:border-indigo-500 transition">
+        </div>
+        <div>
+            <label id="withdraw-limit-label" class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Amount (Min ₹5)</label>
+            <input id="withdraw-amt" type="number" placeholder="₹0.00" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold text-sm outline-none focus:border-indigo-500 transition">
+        </div>
+        <button onclick="currentTask='WITHDRAW'; document.getElementById('pin-modal').classList.remove('hidden');" class="w-full bg-slate-800 text-white font-black uppercase tracking-widest text-[11px] rounded-2xl py-4 shadow-lg shadow-slate-300 tap mt-2"><i class="fa-solid fa-building-columns mr-1"></i> Send to Bank</button>
+    </div>
+</div>
+
+<div id="pay-screen" class="app-screen hidden p-6 bg-slate-50 min-h-screen pb-24">
+    <div class="flex items-center mb-6 fade-up">
+        <button onclick="showScreen('main-dashboard')" class="text-slate-600 bg-white w-10 h-10 rounded-xl flex items-center justify-center shadow-sm border border-slate-100 tap"><i class="fa-solid fa-arrow-left"></i></button>
+        <h2 class="ml-4 font-black text-slate-800 text-lg uppercase tracking-wide">Wallet Transfer</h2>
+    </div>
+    <div class="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 flex justify-between items-center mb-6 fade-up delay-1">
+        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest"><i class="fa-solid fa-wallet text-indigo-400 mr-1"></i> Wallet Bal</span>
+        <span id="pay-avail-bal" class="text-xl font-black text-indigo-600">₹0.00</span> 
+    </div>
+    <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-5 fade-up delay-2">
+        <div class="relative">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Receiver Mobile</label>
+            <input id="pay-phone" oninput="checkReceiver(this.value)" type="number" placeholder="10-digit number" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold text-sm outline-none focus:border-indigo-500 transition">
+            <div id="receiver-name-display" class="absolute -bottom-6 left-1 text-[9px] font-black hidden"></div>
+        </div>
+        <div class="pt-2">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Amount (₹)</label>
+            <input id="pay-amt" type="number" placeholder="0.00" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold text-sm outline-none focus:border-indigo-500 transition">
+        </div>
+        <button onclick="currentTask='PAY'; document.getElementById('pin-modal').classList.remove('hidden');" class="w-full bg-indigo-600 text-white font-black uppercase tracking-widest text-[11px] rounded-2xl py-4 shadow-lg shadow-indigo-500/30 tap mt-4"><i class="fa-solid fa-bolt mr-1"></i> Send Securely</button>
+    </div>
+</div>
+
+<div id="bulk-screen" class="app-screen hidden p-6 bg-slate-50 min-h-screen pb-24">
+    <div class="flex items-center mb-6 fade-up">
+        <button onclick="showScreen('main-dashboard')" class="text-slate-600 bg-white w-10 h-10 rounded-xl flex items-center justify-center shadow-sm border border-slate-100 tap"><i class="fa-solid fa-arrow-left"></i></button>
+        <h2 class="ml-4 font-black text-slate-800 text-lg uppercase tracking-wide">Bulk Payout</h2>
+    </div>
+    <div class="bg-sky-50 p-5 rounded-[1.5rem] shadow-inner border border-sky-100 flex justify-between items-center mb-6 fade-up delay-1">
+        <span class="text-[10px] font-black text-sky-600 uppercase tracking-widest">Available Bal</span>
+        <span id="bulk-balance-display" class="text-xl font-black text-sky-600">₹0.00</span> 
+    </div>
+    <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-5 fade-up delay-2">
+        <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Phone Numbers (New line)</label>
+            <textarea id="bulk-numbers" rows="5" placeholder="9876543210&#10;9123456789" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold text-sm outline-none focus:border-sky-500 transition"></textarea>
+        </div>
+        <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Amount Per User (₹)</label>
+            <input id="bulk-amount" type="number" placeholder="0.00" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold text-sm outline-none focus:border-sky-500 transition">
+        </div>
+        <button onclick="processBulkSend()" class="w-full bg-sky-500 text-white font-black uppercase tracking-widest text-[11px] rounded-2xl py-4 shadow-lg shadow-sky-500/30 tap mt-2"><i class="fa-solid fa-layer-group mr-1"></i> Send to All</button>
+    </div>
+</div>
+
+<div id="api-screen" class="app-screen hidden p-6 bg-slate-50 min-h-screen pb-24">
+    <div class="flex items-center mb-6 fade-up">
+        <button onclick="showScreen('main-dashboard')" class="text-slate-600 bg-white w-10 h-10 rounded-xl flex items-center justify-center shadow-sm border border-slate-100 tap"><i class="fa-solid fa-arrow-left"></i></button>
+        <h2 class="ml-4 font-black text-slate-800 text-lg uppercase tracking-wide">Developer API</h2>
+    </div>
+
+    <div class="bg-red-50 border border-red-100 rounded-2xl p-4 flex gap-3 items-start mb-6 fade-up delay-1">
+        <i class="fa-solid fa-triangle-exclamation text-red-500 mt-0.5"></i>
+        <div>
+            <h3 class="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1">Security Warning</h3>
+            <p class="text-[10px] font-bold text-slate-600 leading-relaxed">Do not share this key. Anyone with this key can deduct funds from your wallet automatically.</p>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 mb-6 fade-up delay-2">
+        <div class="flex justify-between items-center mb-4">
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest"><i class="fa-solid fa-key text-indigo-400 mr-1"></i> Active Secret Key</span>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex justify-between items-center gap-2 mb-5">
+            <span class="user-api-key-text font-mono text-xs font-bold text-indigo-600 tracking-wider break-all">LOADING...</span>
+            <button onclick="copyText(currentUser.apiKey)" class="text-slate-400 hover:text-indigo-600 p-2 transition bg-white rounded-lg shadow-sm border border-slate-100 tap"><i class="fa-regular fa-copy"></i></button>
+        </div>
+        <button onclick="generateUserApiKey()" class="w-full bg-slate-800 text-white font-black uppercase tracking-widest text-[10px] py-4 rounded-2xl shadow-lg tap transition-all">
+            <i class="fa-solid fa-rotate mr-1"></i> Regenerate API Key
+        </button>
+    </div>
+
+    <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 fade-up delay-3">
+        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4"><i class="fa-solid fa-link text-indigo-400 mr-1"></i> GET Payment Endpoint</span>
+        <div class="bg-slate-800 p-4 rounded-2xl relative shadow-inner">
+            <p class="text-[10px] font-mono text-slate-300 break-all leading-relaxed" id="api-url-full-text">
+                https://xtrac-pay.vercel.app/api/pay?key=<span class="text-emerald-400 font-bold" id="api-url-key">{Api_key}</span>&paytm=<span class="text-yellow-400 font-bold">{number}</span>&amount=<span class="text-yellow-400 font-bold">{amount}</span>
+            </p>
+            <button onclick="copyText(document.getElementById('api-url-full-text').innerText)" class="absolute top-4 right-4 text-slate-400 hover:text-white p-2 transition-colors tap"><i class="fa-regular fa-copy"></i></button>
+        </div>
+    </div>
+</div>
+
+<div id="history-screen" class="app-screen hidden p-6 bg-slate-50 min-h-screen pb-24">
+    <div class="flex items-center mb-6 fade-up">
+        <button onclick="showScreen('main-dashboard')" class="text-slate-600 bg-white w-10 h-10 rounded-xl flex items-center justify-center shadow-sm border border-slate-100 tap"><i class="fa-solid fa-arrow-left"></i></button>
+        <h2 class="ml-4 font-black text-slate-800 text-lg uppercase tracking-wide">All Transactions</h2>
+    </div>
+
+    <div class="bg-white p-1.5 rounded-2xl flex shadow-sm border border-slate-100 mb-6 gap-1 overflow-x-auto hide-scroll fade-up delay-1">
+        <button onclick="switchHistoryTab('ALL')" id="tab-all" class="flex-1 bg-indigo-600 text-white font-black uppercase tracking-widest py-3 px-3 rounded-xl text-[9px] transition whitespace-nowrap tap">ALL</button>
+        <button onclick="switchHistoryTab('DEP')" id="tab-dep" class="flex-1 text-slate-400 font-black uppercase tracking-widest py-3 px-3 rounded-xl text-[9px] transition hover:bg-slate-50 bg-transparent whitespace-nowrap tap">DEPOSIT</button>
+        <button onclick="switchHistoryTab('WITH')" id="tab-with" class="flex-1 text-slate-400 font-black uppercase tracking-widest py-3 px-3 rounded-xl text-[9px] transition hover:bg-slate-50 bg-transparent whitespace-nowrap tap">WITHDRAW</button>
+        <button onclick="switchHistoryTab('TXN')" id="tab-txn" class="flex-1 text-slate-400 font-black uppercase tracking-widest py-3 px-3 rounded-xl text-[9px] transition hover:bg-slate-50 bg-transparent whitespace-nowrap tap">OTHER</button>
+    </div>
+    <div id="history-list" class="space-y-3 min-h-[300px] fade-up delay-2"></div>
+</div>
+
+<div id="claim-screen" class="app-screen hidden p-6 bg-slate-50 min-h-screen pb-24">
+    <div class="flex items-center justify-between mb-6 fade-up">
+        <div class="flex items-center">
+            <button onclick="showScreen('main-dashboard')" class="text-slate-600 bg-white w-10 h-10 rounded-xl flex items-center justify-center shadow-sm border border-slate-100 tap"><i class="fa-solid fa-arrow-left"></i></button>
+            <h2 class="ml-4 font-black text-slate-800 text-lg uppercase tracking-wide">Gift Center</h2>
+        </div>
+    </div>
+    <div class="space-y-6">
+        <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 text-center fade-up delay-1 relative overflow-hidden">
+            <div class="absolute -right-6 -top-6 text-7xl text-pink-50 opacity-50"><i class="fa-solid fa-gift"></i></div>
+            <div class="h-16 w-16 bg-pink-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-pink-500 relative z-10"><i class="fa-solid fa-gift text-2xl"></i></div>
+            <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest relative z-10">Redeem VIP Code</h3>
+            <p class="text-[10px] text-slate-400 font-bold mb-6 relative z-10">Claim free funds to your wallet</p>
+            <input type="text" id="claim-input" placeholder="CODE-XXXX" class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-4 text-center text-xl font-black uppercase tracking-[0.2em] mb-4 outline-none focus:border-pink-400 transition relative z-10">
+            <button onclick="handleClaimCode()" class="w-full bg-pink-500 text-white font-black py-4 rounded-2xl text-[11px] uppercase tracking-widest shadow-lg shadow-pink-500/30 tap relative z-10">Claim Reward</button>
+        </div>
+        
+        <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 text-center fade-up delay-2 relative overflow-hidden">
+             <div class="absolute -left-6 -bottom-6 text-7xl text-indigo-50 opacity-50"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+            <div class="h-16 w-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-indigo-600 relative z-10"><i class="fa-solid fa-wand-magic-sparkles text-2xl"></i></div>
+            <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest relative z-10">Generate Code</h3>
+            <div class="space-y-4 mb-6 mt-4 relative z-10">
+                <input type="number" id="create-code-amount" placeholder="Amount (₹) per user" class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 font-bold outline-none focus:border-indigo-400 transition text-sm">
+                <input type="number" id="create-code-users" placeholder="Total Claim Limits" class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 font-bold outline-none focus:border-indigo-400 transition text-sm">
+            </div>
+            <button onclick="handleCreateCode()" class="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl text-[11px] uppercase tracking-widest shadow-lg shadow-indigo-500/30 tap relative z-10">Create Code</button>
+            <div id="generated-code-box" class="hidden mt-6 p-5 bg-indigo-50 rounded-2xl border border-dashed border-indigo-200 relative z-10">
+                <p class="text-[9px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Your Code is Ready:</p>
+                <p id="new-code-text" class="text-xl font-black text-indigo-600 tracking-[0.2em] select-all"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="lifafa-manager-screen" class="app-screen hidden p-6 bg-slate-50 min-h-screen pb-24">
+    <div class="flex items-center mb-6 fade-up">
+        <button onclick="showScreen('main-dashboard')" class="text-slate-600 bg-white w-10 h-10 rounded-xl flex items-center justify-center shadow-sm border border-slate-100 tap"><i class="fa-solid fa-arrow-left"></i></button>
+        <h2 class="ml-4 font-black text-slate-800 text-lg uppercase tracking-wide">Giveaways</h2>
+    </div>
+
+    <div class="bg-white p-1.5 rounded-2xl flex shadow-sm border border-slate-100 mb-6 gap-1 fade-up delay-1">
+        <button onclick="toggleLifafaTab('CREATE')" id="l-tab-create" class="flex-1 bg-red-500 text-white font-black uppercase tracking-widest py-3 px-2 rounded-xl text-[10px] transition tap">CREATE NEW</button>
+        <button onclick="toggleLifafaTab('LIST')" id="l-tab-list" class="flex-1 text-slate-400 font-black uppercase tracking-widest py-3 px-2 rounded-xl text-[10px] transition hover:bg-slate-50 bg-transparent tap">HISTORY</button>
+    </div>
+
+    <div id="lifafa-create-sec" class="space-y-4 fade-up delay-2">
+        <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
+            <div class="space-y-5">
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2"><i class="fa-brands fa-telegram text-blue-500 mr-1"></i> Telegram Link (Req)</label>
+                    <input id="l-tg" type="text" placeholder="https://t.me/yourchannel" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold text-sm outline-none focus:border-red-400 transition">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2"><i class="fa-solid fa-lock text-slate-400 mr-1"></i> Unique Access Code (Opt)</label>
+                    <input id="l-code" type="text" placeholder="Leave blank if open" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold text-sm outline-none focus:border-red-400 transition">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2"><i class="fa-solid fa-dice text-purple-400 mr-1"></i> Game Type</label>
+                    <div class="relative">
+                        <select id="l-type" onchange="switchLifafaInputs()" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold text-sm outline-none focus:border-red-400 transition appearance-none">
+                            <option value="STANDARD">Standard Claim (Fixed ₹)</option>
+                            <option value="SCRATCH">Scratch Card (Random ₹)</option>
+                            <option value="TOSS">Coin Toss (Win or Lose)</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-5 top-5 text-slate-400 pointer-events-none text-xs"></i>
+                    </div>
+                </div>
+
+                <div id="l-input-standard" class="border-l-4 border-red-200 pl-4 py-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">₹ Per User</label>
+                    <input id="l-std-amt" type="number" placeholder="Fixed amount e.g. 5" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold text-sm outline-none focus:border-red-400 transition">
+                </div>
+
+                <div id="l-input-scratch" class="hidden grid-cols-2 gap-3 border-l-4 border-red-200 pl-4 py-1">
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Min ₹</label>
+                        <input id="l-scr-min" type="number" placeholder="1" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold text-sm outline-none focus:border-red-400 transition">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Max ₹</label>
+                        <input id="l-scr-max" type="number" placeholder="10" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold text-sm outline-none focus:border-red-400 transition">
+                    </div>
+                    <p class="col-span-2 text-[9px] text-red-400 font-bold tracking-wide">Wallet deducts Max Amount * Users.</p>
+                </div>
+
+                <div id="l-input-toss" class="hidden space-y-4 border-l-4 border-red-200 pl-4 py-1">
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Winning Amount ₹</label>
+                        <input id="l-toss-amt" type="number" placeholder="e.g. 10" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold text-sm outline-none focus:border-red-400 transition">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Win Condition</label>
+                        <div class="relative">
+                            <select id="l-toss-win" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold text-sm outline-none focus:border-red-400 transition appearance-none">
+                                <option value="HEAD">HEAD</option>
+                                <option value="TAIL">TAIL</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down absolute right-5 top-5 text-slate-400 pointer-events-none text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2"><i class="fa-solid fa-users text-emerald-400 mr-1"></i> Total Users Limit</label>
+                    <input id="l-users" type="number" placeholder="Max claims e.g. 50" class="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 font-bold text-sm outline-none focus:border-red-400 transition">
+                </div>
+            </div>
+            
+            <button onclick="handleCreateLifafa()" class="w-full bg-red-500 text-white font-black uppercase tracking-widest text-[11px] rounded-2xl py-4 shadow-lg shadow-red-500/30 tap mt-8 flex items-center justify-center"><i class="fa-solid fa-paper-plane mr-2"></i> Launch Lifafa</button>
+            
+            <div id="l-generated-link" class="hidden mt-6 p-5 bg-red-50 rounded-2xl border border-dashed border-red-200 break-all text-center">
+                <p class="text-[9px] font-bold text-red-400 uppercase tracking-widest mb-2">Public Link Generated:</p>
+                <a id="l-link-text" href="#" class="text-xs font-mono font-bold text-red-600 block mb-3 underline underline-offset-4 decoration-red-300"></a>
+                <button onclick="copyText(document.getElementById('l-link-text').href)" class="bg-white text-red-500 border border-red-100 text-[10px] uppercase font-black tracking-widest px-4 py-2 rounded-xl shadow-sm hover:bg-red-100 transition tap"><i class="fa-regular fa-copy mr-1"></i> Copy Link</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="lifafa-list-sec" class="hidden space-y-4 min-h-[300px]"></div>
+</div>
+
+<div id="claim-lifafa-screen" class="app-screen hidden fixed inset-0 bg-red-500 p-6 flex flex-col items-center justify-center z-[5000] overflow-y-auto">
+    <div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[30%] bg-white/10 rounded-full blur-3xl"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[60%] h-[40%] bg-white/10 rounded-full blur-3xl"></div>
+    </div>
+
+    <div class="w-full max-w-sm bg-white p-8 rounded-[2.5rem] shadow-2xl text-center relative z-10 animate-[fadeUpAnim_0.5s_ease-out]">
+        <div class="w-24 h-24 bg-red-50 text-red-500 rounded-[1.5rem] flex items-center justify-center text-4xl mx-auto -mt-16 mb-4 border-4 border-white shadow-md transform rotate-3"><i class="fa-solid fa-gift -rotate-3"></i></div>
+        
+        <h1 class="text-2xl font-black text-slate-800 uppercase tracking-wide">Surprise Box!</h1>
+        <p id="claim-type-desc" class="text-[10px] text-white bg-slate-800 font-bold uppercase tracking-widest mt-2 mb-6 py-1.5 px-4 rounded-md inline-block shadow-sm">Loading Info...</p>
+
+        <div id="claim-steps-container" class="space-y-5 text-left hidden">
+            <div class="p-5 bg-blue-50 rounded-2xl border border-blue-100 relative overflow-hidden">
+                <div class="absolute right-[-10px] top-[-10px] text-5xl text-blue-100 opacity-50 pointer-events-none"><i class="fa-brands fa-telegram"></i></div>
+                <label class="text-[10px] font-black text-blue-500 uppercase tracking-widest block mb-3 relative z-10">Step 1: Community</label>
+                <button onclick="openLifafaTelegram()" class="w-full bg-blue-500 text-white font-black py-3.5 rounded-xl text-xs uppercase tracking-widest shadow-md shadow-blue-500/30 tap relative z-10"><i class="fa-brands fa-telegram mr-1"></i> Join to Unlock</button>
+            </div>
+
+            <div class="p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Step 2: Verification</label>
+                <div id="claim-code-div" class="mb-3 hidden">
+                    <input id="claim-code" type="text" placeholder="Access Code" class="w-full bg-white p-4 rounded-xl border border-slate-200 text-sm font-bold outline-none focus:border-red-400 text-center tracking-[0.2em] uppercase transition">
+                </div>
+                <div>
+                    <input id="claim-phone" type="number" placeholder="Registered Wallet No." class="w-full bg-white p-4 rounded-xl border border-slate-200 text-sm font-bold outline-none focus:border-red-400 text-center transition">
+                </div>
+            </div>
+
+            <button onclick="proceedLifafaClaim()" class="w-full bg-red-500 text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[11px] shadow-lg shadow-red-500/30 tap mt-2">Open Now</button>
+        </div>
+
+        <div id="claim-game-container" class="hidden py-6">
+            <div id="game-scratch" class="hidden">
+                <div class="w-16 h-16 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 animate-pulse"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                <p class="text-xs font-black uppercase tracking-widest text-slate-400 mb-6">Scratch below to win</p>
+                <button onclick="executeFinalClaim()" class="w-full bg-orange-500 text-white font-black py-5 rounded-2xl uppercase tracking-widest text-sm shadow-lg shadow-orange-500/30 tap relative overflow-hidden group">
+                    <span class="relative z-10">Reveal Prize</span>
+                    <div class="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+                </button>
+                <style>@keyframes shimmer { 100% { transform: translateX(100%); } }</style>
+            </div>
+
+            <div id="game-toss" class="hidden">
+                <p class="text-xs font-black uppercase tracking-widest text-slate-400 mb-6">Test Your Luck</p>
+                <div id="coin-ui" class="w-24 h-24 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full mx-auto flex items-center justify-center border-4 border-yellow-200 shadow-xl mb-8 text-yellow-800 font-black text-3xl shadow-yellow-500/40">₹</div>
+                <button onclick="playTossGame()" class="w-full bg-yellow-500 text-white font-black py-4 rounded-2xl uppercase tracking-widest text-sm shadow-lg shadow-yellow-500/30 tap">Flip Coin</button>
+            </div>
+        </div>
+
+        <div id="claim-result-container" class="hidden py-8">
+            <div id="result-icon-div" class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4"><i id="result-icon" class="fa-solid fa-circle-info text-slate-400"></i></div>
+            <h2 id="claim-result-msg" class="text-xl font-black text-slate-800 tracking-wide uppercase"></h2>
+            <p id="claim-result-amt" class="text-5xl font-black text-emerald-500 my-6 hidden drop-shadow-sm tracking-tighter">₹0</p>
+            <button onclick="location.href=location.origin" class="w-full bg-slate-800 text-white font-black text-[10px] uppercase tracking-widest py-4 rounded-2xl tap shadow-lg mt-4">Go to Dashboard</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const API_URL = "/api/backend"; 
+
+let currentUser = JSON.parse(localStorage.getItem('ultra_user'));
+let currentTask = '';
+let currentHistoryTab = 'ALL';
+let activeLifafaData = null; 
+let tgJoined = false;
+
+window.appConfig = {};
+
+const loader = (show) => document.getElementById('global-loader').style.display = show ? 'flex' : 'none';
+
+async function apiCall(action, payload) {
+    try {
+        const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: action, data: payload })
+        });
+        const json = await res.json();
+        if (!res.ok || json.error) throw new Error(json.error || "Server Error");
+        return json.data;
+    } catch (e) {
+        throw e;
+    }
+}
+
+// Custom Dedicated Vercel & Mobile Safe Copy Function
+function copyDepositUPI() {
+    const textToCopy = "raghuwansiom3179@fam";
+    
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            alert('UPI ID Copied Successfully!');
+        }).catch(() => {
+            fallbackCopy(textToCopy);
+        });
+    } else {
+        fallbackCopy(textToCopy);
+    }
+    
+    function fallbackCopy(text) {
+        var textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.position = "fixed";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            var successful = document.execCommand('copy');
+            if (successful) {
+                alert('UPI ID Copied Successfully!');
+            } else {
+                alert('Please copy manually: ' + text);
+            }
+        } catch (err) {
+            alert('Please copy manually: ' + text);
+        }
+        document.body.removeChild(textArea);
+    }
+}
+
+// Generic Copy function for other parts (API Key, Links, etc.)
+function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Copied Successfully!');
+        }).catch(() => {
+            var tempInput = document.createElement("input");
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            try { document.execCommand("copy"); } catch (err) {}
+            document.body.removeChild(tempInput);
+            alert('Copied Successfully!');
+        });
+    } else {
+        var tempInput = document.createElement("input");
+        tempInput.value = text;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        try { document.execCommand("copy"); } catch (err) {}
+        document.body.removeChild(tempInput);
+        alert('Copied Successfully!');
+    }
+}
+
+function showScreen(id) {
+    document.querySelectorAll('.app-screen').forEach(s => { s.classList.add('hidden'); s.style.display = 'none'; });
+    const target = document.getElementById(id);
+    if(target) { target.classList.remove('hidden'); target.style.display = 'block'; }
+    
+    const sidebar = document.getElementById('sidebar');
+    if(sidebar) sidebar.classList.add('-translate-x-full');
+    
+    if(id === 'history-screen') loadHistory();
+    if(id === 'main-dashboard') loadHistory(); 
+    
+    if(id === 'profile-screen' && currentUser) {
+        document.getElementById('profile-name-display').innerText = currentUser.name || "User";
+        document.getElementById('profile-phone-display').innerText = currentUser.phone;
+        document.getElementById('edit-name-input').value = currentUser.name || "";
+    }
+    
+    if(id === 'api-screen' && currentUser) {
+        const key = currentUser.apiKey || "NO_KEY_GENERATED_YET";
+        document.querySelectorAll('.user-api-key-text').forEach(el => el.innerText = key);
+        document.getElementById('api-url-key').innerText = key; 
+    }
+}
+
+async function handleLogin() {
+    const phone = document.getElementById('login-phone').value;
+    const pass = document.getElementById('login-pass').value;
+    if (!phone || !pass) return alert("Fill all fields!");
+    
+    loader(true);
+    try {
+        const user = await apiCall('LOGIN', { phone: "+91"+phone, password: pass });
+        localStorage.setItem('ultra_user', JSON.stringify(user));
+        currentUser = user;
+        startSync();
+        showScreen('main-dashboard');
+    } catch(e) { alert(e.message); }
+    loader(false);
+}
+
+async function handleRegister() {
+    const name = document.getElementById('reg-name').value;
+    const phone = document.getElementById('reg-phone').value;
+    const pass = document.getElementById('reg-pass').value;
+    const pin = document.getElementById('reg-pin').value;
+    if (!name || !phone || !pass || !pin) return alert("Fill all fields!");
+
+    loader(true);
+    try {
+        const user = await apiCall('REGISTER', { name, phone: "+91"+phone, password: pass, pin });
+        localStorage.setItem('ultra_user', JSON.stringify(user));
+        currentUser = user;
+        startSync();
+        showScreen('main-dashboard');
+    } catch(e) { alert(e.message); }
+    loader(false);
+}
+
+let syncTimer = null;
+function startSync() {
+    if(!currentUser) return;
+    if(syncTimer) clearInterval(syncTimer);
+    
+    const fetchSync = async () => {
+        try {
+            const result = await apiCall('SYNC', { phone: currentUser.phone });
+            const u = result.user;
+            const config = result.config || {};
+            
+            window.appConfig = config;
+
+            if(config.maintenance) {
+                alert("System is under maintenance! Please try again later.");
+                localStorage.clear();
+                location.reload();
+                return;
+            }
+
+            if(u.banned) {
+                alert("Your account has been banned by the Administrator.");
+                localStorage.clear();
+                location.reload();
+                return;
+            }
+
+            currentUser = u;
+            localStorage.setItem('ultra_user', JSON.stringify(u));
+            document.getElementById('main-balance').innerText = "₹" + (Number(u.balance)||0).toFixed(2);
+            document.getElementById('dash-user-name').innerText = u.name || "User";
+            
+            const minW = window.appConfig.minWithdraw || 5;
+            const wLabel = document.getElementById('withdraw-limit-label');
+            if(wLabel) wLabel.innerText = `Amount (Min ₹${minW})`;
+            document.getElementById('withdraw-amt').placeholder = `₹0.00`;
+
+        } catch(e) {}
+    };
+    fetchSync(); 
+    
+    syncTimer = setInterval(fetchSync, 3000); 
+}
+
+async function updateProfileName() {
+    const name = document.getElementById('edit-name-input').value;
+    if(name.length < 3) return alert("Min 3 characters required!");
+    loader(true);
+    try {
+        await apiCall('UPDATE_PROFILE', { phone: currentUser.phone, name });
+        alert("Updated Successfully!");
+    } catch(e) { alert(e.message); }
+    loader(false);
+}
+
+async function updatePIN() {
+    const pin = document.getElementById('new-pin-val').value;
+    if(pin.length !== 4) return alert("Must be 4 digits!");
+    loader(true);
+    try {
+        await apiCall('UPDATE_PIN', { phone: currentUser.phone, pin });
+        alert("PIN Updated!"); showScreen('main-dashboard');
+    } catch(e) { alert(e.message); }
+    loader(false);
+}
+
+async function checkReceiver(val) {
+    const display = document.getElementById('receiver-name-display');
+    if(val.length === 10) {
+        try {
+            const name = await apiCall('CHECK_RECEIVER', { phone: "+91"+val });
+            display.innerText = "Name: " + name;
+            display.className = "absolute -bottom-6 left-1 text-[9px] font-black block text-emerald-600";
+        } catch(e) {
+            display.innerText = "Not Found!";
+            display.className = "absolute -bottom-6 left-1 text-[9px] font-black block text-red-500";
+        }
+    } else { display.className = "hidden"; }
+}
+
+async function handlePIN() {
+    const val = document.getElementById('input-pin').value;
+    
+    document.getElementById('pin-modal').classList.add('hidden');
+    document.getElementById('input-pin').value = "";
+    
+    if (val !== currentUser.pin) return alert("Incorrect PIN!");
+
+    try {
+        if(currentTask === 'DEPOSIT') {
+            const amt = Number(document.getElementById('dep-amt').value);
+            const utr = document.getElementById('dep-utr').value.trim();
+            if(amt < 20) return alert("Minimum deposit amount is ₹20!");
+            if(utr.length !== 12) return alert("Enter valid 12-digit UTR!");
+            
+            loader(true);
+            await apiCall('DEPOSIT', { phone: currentUser.phone, name: currentUser.name, amount: amt, utr: utr });
+            alert("Deposit Request Sent!"); showScreen('main-dashboard');
+        }
+        else if(currentTask === 'WITHDRAW') {
+            const amt = Number(document.getElementById('withdraw-amt').value);
+            const upi = document.getElementById('withdraw-upi').value.trim();
+            
+            const minW = window.appConfig.minWithdraw || 5;
+            if(amt < minW) return alert(`Minimum withdrawal amount is ₹${minW}!`);
+
+            if(amt > (currentUser.balance || 0)) return alert("Insufficient Balance!");
+            if(!upi) return alert("Enter valid UPI ID!");
+
+            loader(true);
+            await apiCall('WITHDRAW', { phone: currentUser.phone, name: currentUser.name, amount: amt, upi: upi });
+            alert("Withdraw Request Sent!"); showScreen('main-dashboard');
+        }
+        else if(currentTask === 'PAY') {
+            const amt = Number(document.getElementById('pay-amt').value);
+            let receiver = document.getElementById('pay-phone').value.trim();
+            
+            if(amt <= 0) return alert("Enter a valid amount!");
+            if(amt > (currentUser.balance || 0)) return alert("Insufficient Balance!");
+            
+            if(receiver.length === 10) receiver = "+91" + receiver;
+            if(receiver === currentUser.phone) return alert("You cannot send money to yourself!");
+
+            loader(true);
+            await apiCall('PAY', { sender: currentUser.phone, receiver: receiver, amount: amt });
+            alert("Transfer Successful!"); showScreen('main-dashboard');
+            loadHistory();
+        }
+    } catch(e) { alert(e.message); }
+    loader(false);
+}
+
+async function processBulkSend() {
+    const numbers = document.getElementById('bulk-numbers').value.split('\n').map(n => n.trim().length===10 ? "+91"+n.trim() : n.trim()).filter(n=>n);
+    const amount = Number(document.getElementById('bulk-amount').value);
+    
+    if(!amount || amount <= 0 || numbers.length===0) return alert("Invalid details provided!");
+    
+    const totalCost = amount * numbers.length;
+    if(totalCost > (currentUser.balance || 0)) return alert(`Insufficient Balance! Total needed: ₹${totalCost}`);
+
+    if(!confirm(`Send ₹${amount} to ${numbers.length} users? (Total: ₹${totalCost})`)) return;
+
+    loader(true);
+    try {
+        await apiCall('BULK_PAY', { sender: currentUser.phone, receivers: numbers, amount });
+        alert("Bulk Send Complete!"); showScreen('main-dashboard');
+        loadHistory();
+    } catch(e) { alert(e.message); }
+    loader(false);
+}
+
+async function handleCreateCode() {
+    const amt = Number(document.getElementById('create-code-amount').value);
+    const users = Number(document.getElementById('create-code-users').value);
+    
+    if(!amt || amt <= 0 || !users || users <= 0) return alert("Enter valid amount and users!");
+    const totalCost = amt * users;
+    if(totalCost > (currentUser.balance || 0)) return alert("Insufficient Balance!");
+
+    loader(true);
+    try {
+        const code = await apiCall('CREATE_GIFT', { phone: currentUser.phone, amount: amt, usersCount: users });
+        document.getElementById('generated-code-box').classList.remove('hidden');
+        document.getElementById('new-code-text').innerText = code;
+        loadHistory();
+    } catch(e) { alert(e.message); }
+    loader(false);
+}
+
+async function handleClaimCode() {
+    const code = document.getElementById('claim-input').value.trim().toUpperCase();
+    if(!code) return alert("Please enter a code!");
+
+    loader(true);
+    try {
+        const amt = await apiCall('CLAIM_GIFT', { phone: currentUser.phone, code: code });
+        alert(`Claimed ₹${amt} successfully!`); showScreen('main-dashboard');
+        loadHistory();
+    } catch(e) { alert(e.message); }
+    loader(false);
+}
+
+async function generateUserApiKey() {
+    if(!confirm("Generate new API Key? Old one will be invalid.")) return;
+    loader(true);
+    try {
+        const key = await apiCall('GENERATE_API', { phone: currentUser.phone });
+        document.querySelectorAll('.user-api-key-text').forEach(el => el.innerText = key);
+        document.getElementById('api-url-key').innerText = key;
+        currentUser.apiKey = key;
+        localStorage.setItem('ultra_user', JSON.stringify(currentUser));
+    } catch(e) { alert(e.message); }
+    loader(false);
+}
+
+function switchHistoryTab(tab) {
+    currentHistoryTab = tab;
+    ['ALL', 'DEP', 'WITH', 'TXN'].forEach(t => {
+        const btn = document.getElementById(`tab-${t.toLowerCase()}`);
+        if(btn) {
+            if(t === tab) {
+                btn.className = "flex-1 bg-indigo-600 text-white font-black uppercase tracking-widest py-3 px-3 rounded-xl text-[9px] transition whitespace-nowrap tap";
+            } else {
+                btn.className = "flex-1 text-slate-400 font-black uppercase tracking-widest py-3 px-3 rounded-xl text-[9px] transition hover:bg-slate-50 bg-transparent whitespace-nowrap tap";
+            }
+        }
+    });
+    loadHistory();
+}
+
+function openReceiptModal(amt, title, id, isCreditStr, status, txDate, infoRaw) {
+    let isCredit = (isCreditStr === 'true' || isCreditStr === true);
+    let sign = isCredit ? "+" : "-";
+    let info = infoRaw ? decodeURIComponent(infoRaw) : "";
+    
+    let meName = window.currentUser.name || "Wallet User";
+    let sender = "--";
+    let receiver = "--";
+    let extraInfo = "";
+
+    if(info.startsWith("To: ")) {
+        sender = meName; receiver = info.replace("To: ", "");
+    } else if (info.startsWith("From: ")) {
+        sender = info.replace("From: ", ""); receiver = meName;
+    } else if (info.startsWith("UPI: ") || info.startsWith("UTR: ")) {
+        sender = isCredit ? "System Admin" : meName;
+        receiver = isCredit ? meName : "System Admin";
+        extraInfo = info;
+    } else {
+        sender = isCredit ? "System" : meName;
+        receiver = isCredit ? meName : "System";
+        extraInfo = info;
+    }
+
+    document.getElementById('receipt-amt').innerText = sign + "₹" + amt;
+    document.getElementById('receipt-id').innerText = id.toUpperCase();
+    document.getElementById('receipt-type').innerText = title;
+    document.getElementById('receipt-date').innerText = txDate;
+    document.getElementById('receipt-sender').innerText = sender;
+    document.getElementById('receipt-receiver').innerText = receiver;
+
+    if(extraInfo) {
+        document.getElementById('receipt-extra-div').classList.remove('hidden');
+        document.getElementById('receipt-extra').innerText = extraInfo;
+    } else {
+        document.getElementById('receipt-extra-div').classList.add('hidden');
+    }
+
+    const statusBadge = document.getElementById('receipt-status');
+    const headerBg = document.getElementById('receipt-header-bg');
+    const iconBg = document.getElementById('receipt-icon-bg');
+    const icon = document.getElementById('receipt-icon');
+    
+    statusBadge.innerText = status;
+    
+    if (status === 'PENDING') {
+        statusBadge.className = "text-[10px] font-black px-4 py-1.5 rounded-md bg-orange-50 text-orange-600 uppercase tracking-widest border border-orange-100";
+        headerBg.className = "bg-orange-500 pt-8 pb-10 text-center relative";
+        iconBg.className = "mx-auto h-16 w-16 bg-white rounded-full flex items-center justify-center mb-2 shadow-sm animate-pulse";
+        icon.className = "fa-solid fa-clock text-orange-500 text-2xl";
+    } else if (status === 'REJECTED') {
+        statusBadge.className = "text-[10px] font-black px-4 py-1.5 rounded-md bg-red-50 text-red-600 uppercase tracking-widest border border-red-100";
+        headerBg.className = "bg-red-500 pt-8 pb-10 text-center relative";
+        iconBg.className = "mx-auto h-16 w-16 bg-white rounded-full flex items-center justify-center mb-2 shadow-sm";
+        icon.className = "fa-solid fa-xmark text-red-500 text-3xl";
+    } else {
+        statusBadge.className = "text-[10px] font-black px-4 py-1.5 rounded-md bg-emerald-50 text-emerald-600 uppercase tracking-widest border border-emerald-100";
+        headerBg.className = "bg-emerald-500 pt-8 pb-10 text-center relative";
+        iconBg.className = "mx-auto h-16 w-16 bg-white rounded-full flex items-center justify-center mb-2 shadow-sm";
+        icon.className = "fa-solid fa-check text-emerald-500 text-2xl";
+    }
+    
+    document.getElementById('receipt-modal').classList.remove('hidden');
+}
+
+async function loadHistory() {
+    try {
+        let txns = await apiCall('HISTORY', { phone: currentUser.phone });
+        if(!txns) txns = [];
+        txns.sort((a, b) => b.timestamp - a.timestamp);
+
+        let filteredTxns = currentHistoryTab === 'ALL' ? txns : txns.filter(t => t.type === currentHistoryTab);
+        
+        let fullHtml = renderTransactionHTML(filteredTxns, false);
+        const listArea = document.getElementById('history-list');
+        if(listArea) listArea.innerHTML = fullHtml || `<div class="text-center py-10"><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">No Records Found</p></div>`;
+
+        let dashHtml = renderTransactionHTML(txns.slice(0, 5), true);
+        const dashArea = document.getElementById('dashboard-history-list');
+        if(dashArea) dashArea.innerHTML = dashHtml || `<div class="text-center py-6 bg-white rounded-3xl border border-slate-100"><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">No Activity Yet</p></div>`;
+
+    } catch (e) { 
+        console.log(e);
+        const errorHtml = `<div class="text-center py-6"><p class="text-xs text-red-400 font-bold uppercase tracking-widest">Error Loading</p></div>`;
+        if(document.getElementById('history-list')) document.getElementById('history-list').innerHTML = errorHtml;
+        if(document.getElementById('dashboard-history-list')) document.getElementById('dashboard-history-list').innerHTML = errorHtml;
+    }
+}
+
+function renderTransactionHTML(txns, isDashboard) {
+    if(txns.length === 0) return "";
+    let html = "";
+    
+    txns.forEach(data => {
+        let isCredit = data.isCredit;
+        let title = data.title;
+        let sign = isCredit ? "+" : "-";
+        
+        let borderClass = isCredit ? "border-l-4 border-l-emerald-400" : "border-l-4 border-l-slate-300";
+        let color = isCredit ? "text-emerald-600" : "text-slate-800";
+        let bgIcon = isCredit ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-600";
+        let arrow = isCredit ? "fa-arrow-down" : "fa-arrow-up";
+        
+        let statusText = data.status || "SUCCESS"; 
+        let statusColor = "text-emerald-500 bg-emerald-50";
+
+        if (data.status === 'PENDING') {
+            statusText = "Pending"; statusColor = "text-orange-500 bg-orange-50"; color = "text-orange-600"; sign = ""; borderClass = "border-l-4 border-l-orange-400";
+        } else if (data.status === 'REJECTED') {
+            statusText = "Rejected"; statusColor = "text-red-500 bg-red-50"; borderClass = "border-l-4 border-l-red-400";
+            if (data.type === 'WITH') { isCredit = true; sign = "+"; color = "text-slate-800"; bgIcon = "bg-slate-100 text-slate-500"; arrow = "fa-arrow-down"; title = "Withdraw Refund"; } 
+            else if (data.type === 'DEP') { isCredit = false; sign = ""; color = "text-slate-400"; bgIcon = "bg-red-50 text-red-500"; title = "Deposit Rejected"; }
+        }
+
+        let shortDate = data.date.split(',')[0];
+        let extraInfo = data.info ? ` • ${data.info.substring(0,15)}...` : '';
+        let encodedInfo = data.info ? encodeURIComponent(data.info) : "";
+        let padClass = isDashboard ? "p-4" : "p-5";
+
+        html += `
+        <div onclick="openReceiptModal('${data.amount}', '${title}', '${data.id}', '${isCredit}', '${data.status}', '${data.date}', '${encodedInfo}')" 
+             class="flex items-center justify-between bg-white ${padClass} rounded-[1.5rem] shadow-sm border border-slate-100 ${borderClass} active:scale-95 hover:shadow-md transition-all cursor-pointer">
+            <div class="flex items-center gap-4 w-full">
+                <div class="h-10 w-10 min-w-[40px] rounded-full ${bgIcon} flex items-center justify-center text-sm shadow-inner">
+                    <i class="fa-solid ${arrow}"></i>
+                </div>
+                <div class="flex-1 overflow-hidden">
+                    <h3 class="text-xs font-black text-slate-800 truncate">${title}</h3>
+                    <p class="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest truncate">${shortDate}${extraInfo}</p>
+                </div>
+                <div class="text-right">
+                    <h3 class="text-sm font-black ${color} tracking-tight">${sign}₹${data.amount}</h3>
+                    <p class="text-[8px] font-black ${statusColor} px-2 py-0.5 rounded uppercase tracking-widest mt-1 inline-block">${statusText}</p>
+                </div>
+            </div>
+        </div>`;
+    });
+    return html;
+}
+
+function switchLifafaInputs() {
+    const t = document.getElementById('l-type').value;
+    document.getElementById('l-input-standard').style.display = t==='STANDARD' ? 'block' : 'none';
+    document.getElementById('l-input-scratch').style.display = t==='SCRATCH' ? 'grid' : 'none';
+    document.getElementById('l-input-toss').style.display = t==='TOSS' ? 'block' : 'none';
+}
+
+function toggleLifafaTab(tab) {
+    if(tab==='CREATE') {
+        document.getElementById('l-tab-create').className = "flex-1 bg-red-500 text-white font-black uppercase tracking-widest py-3 px-2 rounded-xl text-[10px] transition tap";
+        document.getElementById('l-tab-list').className = "flex-1 text-slate-400 font-black uppercase tracking-widest py-3 px-2 rounded-xl text-[10px] transition hover:bg-slate-50 bg-transparent tap";
+        document.getElementById('lifafa-create-sec').classList.remove('hidden');
+        document.getElementById('lifafa-list-sec').classList.add('hidden');
+    } else {
+        document.getElementById('l-tab-list').className = "flex-1 bg-red-500 text-white font-black uppercase tracking-widest py-3 px-2 rounded-xl text-[10px] transition tap";
+        document.getElementById('l-tab-create').className = "flex-1 text-slate-400 font-black uppercase tracking-widest py-3 px-2 rounded-xl text-[10px] transition hover:bg-slate-50 bg-transparent tap";
+        document.getElementById('lifafa-create-sec').classList.add('hidden');
+        document.getElementById('lifafa-list-sec').classList.remove('hidden');
+        loadMyLifafas();
+    }
+}
+
+async function handleCreateLifafa() {
+    const tg = document.getElementById('l-tg').value.trim();
+    const code = document.getElementById('l-code').value.trim();
+    const type = document.getElementById('l-type').value;
+    const users = Number(document.getElementById('l-users').value);
+    
+    if(!tg.startsWith("http")) return alert("Enter valid Telegram Link starting with http/https");
+    if(!users || users < 1) return alert("Enter valid users limit");
+
+    let payload = { phone: currentUser.phone, type, telegram: tg, code, totalUsers: users };
+
+    if(type === 'STANDARD') {
+        payload.amount = Number(document.getElementById('l-std-amt').value);
+        if(!payload.amount || payload.amount<=0) return alert("Enter valid amount");
+    } else if(type === 'SCRATCH') {
+        payload.minAmount = Number(document.getElementById('l-scr-min').value);
+        payload.maxAmount = Number(document.getElementById('l-scr-max').value);
+        if(!payload.minAmount || !payload.maxAmount || payload.minAmount >= payload.maxAmount) return alert("Invalid Min/Max range");
+    } else if(type === 'TOSS') {
+        payload.amount = Number(document.getElementById('l-toss-amt').value);
+        payload.tossWin = document.getElementById('l-toss-win').value;
+        if(!payload.amount || payload.amount<=0) return alert("Enter valid amount");
+    }
+
+    loader(true);
+    try {
+        const lifafaId = await apiCall('CREATE_LIFAFA', payload);
+        const link = `${location.origin}/?id=${lifafaId}`;
+        document.getElementById('l-generated-link').classList.remove('hidden');
+        document.getElementById('l-link-text').href = link;
+        document.getElementById('l-link-text').innerText = link;
+        alert("Lifafa Created Successfully!");
+        startSync();
+        loadHistory();
+    } catch(e) { alert(e.message); }
+    loader(false);
+}
+
+async function loadMyLifafas() {
+    const listSec = document.getElementById('lifafa-list-sec');
+    listSec.innerHTML = `<p class="text-center text-xs text-slate-400 py-10 font-bold uppercase tracking-widest animate-pulse">Fetching...</p>`;
+    try {
+        const myL = await apiCall('MY_LIFAFAS', { phone: currentUser.phone });
+        if(!myL || myL.length === 0) {
+            listSec.innerHTML = `<div class="bg-white p-8 rounded-[2rem] text-center border border-slate-100"><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">No Lifafas Created</p></div>`;
+            return;
+        }
+        myL.sort((a,b)=>b.timestamp - a.timestamp);
+        let html = '';
+        myL.forEach(l => {
+            const link = `${location.origin}/?id=${l.id}`;
+            const statusBadge = l.isExpired ? `<span class="bg-red-50 text-red-600 px-2 py-1 rounded text-[8px] font-black tracking-widest">EXPIRED</span>` : 
+                               (l.claimedUsers >= l.totalUsers ? `<span class="bg-slate-100 text-slate-500 px-2 py-1 rounded text-[8px] font-black tracking-widest">COMPLETED</span>` : `<span class="bg-emerald-50 text-emerald-600 px-2 py-1 rounded text-[8px] font-black tracking-widest">ACTIVE</span>`);
+            html += `
+            <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 text-left border-l-4 border-l-indigo-400">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs font-black text-slate-800">${l.type} LIFAFA</span>
+                    ${statusBadge}
+                </div>
+                <div class="text-[10px] font-bold text-slate-500 mb-3 bg-slate-50 py-1 px-3 rounded-md inline-block">Claims: ${l.claimedUsers} / ${l.totalUsers}</div>
+                <div class="bg-white border border-slate-200 p-2 rounded-xl flex items-center justify-between shadow-sm">
+                    <span class="text-[9px] truncate w-3/4 font-mono text-indigo-600 ml-1">${link}</span>
+                    <button onclick="copyText('${link}')" class="text-slate-400 bg-slate-50 hover:bg-slate-100 hover:text-indigo-600 transition p-2 rounded-lg tap"><i class="fa-regular fa-copy"></i></button>
+                </div>
+            </div>`;
+        });
+        listSec.innerHTML = html;
+    } catch(e) { listSec.innerHTML = `<p class="text-center text-xs text-red-500 font-bold">Error loading.</p>`; }
+}
+
+async function initLifafaClaim(id) {
+    showScreen('claim-lifafa-screen');
+    try {
+        const res = await apiCall('GET_LIFAFA_DETAILS', { id: id });
+        activeLifafaData = res;
+        activeLifafaData.id = id;
+        
+        document.getElementById('claim-type-desc').innerText = `Type: ${res.type} GIVEAWAY`;
+        document.getElementById('claim-type-desc').className = "text-[10px] text-white bg-indigo-500 font-bold uppercase tracking-widest mt-2 mb-6 py-1.5 px-4 rounded-md inline-block shadow-sm shadow-indigo-500/30";
+        document.getElementById('claim-steps-container').classList.remove('hidden');
+        if(res.hasCode) document.getElementById('claim-code-div').classList.remove('hidden');
+
+    } catch(e) {
+        document.getElementById('claim-type-desc').innerText = "LINK EXPIRED OR INVALID";
+        document.getElementById('claim-type-desc').className = "text-[10px] text-white bg-red-500 font-bold uppercase tracking-widest mt-2 mb-6 py-1.5 px-4 rounded-md inline-block shadow-sm shadow-red-500/30";
+        document.getElementById('claim-result-container').classList.remove('hidden');
+        
+        const iconDiv = document.getElementById('result-icon-div');
+        iconDiv.className = "w-20 h-20 bg-red-50 rounded-[1.5rem] flex items-center justify-center text-4xl mx-auto mb-4 transform -rotate-3";
+        document.getElementById('result-icon').className = "fa-solid fa-triangle-exclamation text-red-500";
+        
+        document.getElementById('claim-result-msg').innerText = e.message;
+        document.getElementById('claim-result-msg').className = "text-lg font-black text-red-500 uppercase";
+    }
+}
+
+function openLifafaTelegram() {
+    tgJoined = true;
+    window.open(activeLifafaData.telegram, '_blank');
+}
+
+function proceedLifafaClaim() {
+    if(!tgJoined) return alert("Please complete Step 1: Join Community!");
+    const phone = document.getElementById('claim-phone').value.trim();
+    if(phone.length !== 10) return alert("Enter a valid 10-digit wallet number!");
+    if(activeLifafaData.hasCode && !document.getElementById('claim-code').value.trim()) return alert("Enter the unique access code!");
+
+    document.getElementById('claim-steps-container').classList.add('hidden');
+    document.getElementById('claim-game-container').classList.remove('hidden');
+
+    if(activeLifafaData.type === 'STANDARD') {
+        executeFinalClaim();
+    } else if(activeLifafaData.type === 'SCRATCH') {
+        document.getElementById('game-scratch').classList.remove('hidden');
+    } else if(activeLifafaData.type === 'TOSS') {
+        document.getElementById('game-toss').classList.remove('hidden');
+    }
+}
+
+function playTossGame() {
+    const coin = document.getElementById('coin-ui');
+    coin.classList.add('coin-toss-anim');
+    setTimeout(() => {
+        executeFinalClaim();
+    }, 2000);
+}
+
+async function executeFinalClaim() {
+    loader(true);
+    const phone = document.getElementById('claim-phone').value.trim();
+    const code = document.getElementById('claim-code').value.trim();
+    
+    try {
+        const result = await apiCall('CLAIM_LIFAFA', { id: activeLifafaData.id, phone: phone, code: code });
+        
+        document.getElementById('claim-game-container').classList.add('hidden');
+        document.getElementById('claim-result-container').classList.remove('hidden');
+
+        const iconDiv = document.getElementById('result-icon-div');
+        const icon = document.getElementById('result-icon');
+        const msg = document.getElementById('claim-result-msg');
+
+        if(result.success && result.amount > 0) {
+            iconDiv.className = "w-20 h-20 bg-emerald-50 rounded-[1.5rem] flex items-center justify-center text-4xl mx-auto mb-4 animate-bounce shadow-sm border border-emerald-100";
+            icon.className = "fa-solid fa-trophy text-emerald-500";
+            
+            msg.innerText = "Congratulations!";
+            msg.className = "text-xl font-black text-slate-800 tracking-wide uppercase";
+            
+            document.getElementById('claim-result-amt').classList.remove('hidden');
+            document.getElementById('claim-result-amt').innerText = `+₹${result.amount}`;
+            
+            if(currentUser && (currentUser.phone === phone || currentUser.phone === "+91"+phone)) { startSync(); loadHistory(); }
+        } else {
+            iconDiv.className = "w-20 h-20 bg-slate-100 rounded-[1.5rem] flex items-center justify-center text-4xl mx-auto mb-4 border border-slate-200";
+            icon.className = "fa-solid fa-face-frown-open text-slate-400";
+            msg.innerText = "Better Luck Next Time!";
+            msg.className = "text-xl font-black text-slate-600 uppercase";
+        }
+    } catch(e) {
+        document.getElementById('claim-game-container').classList.add('hidden');
+        document.getElementById('claim-result-container').classList.remove('hidden');
+        
+        const iconDiv = document.getElementById('result-icon-div');
+        iconDiv.className = "w-20 h-20 bg-red-50 rounded-[1.5rem] flex items-center justify-center text-4xl mx-auto mb-4 transform -rotate-3 border border-red-100";
+        document.getElementById('result-icon').className = "fa-solid fa-triangle-exclamation text-red-500";
+        
+        document.getElementById('claim-result-msg').innerText = e.message;
+        document.getElementById('claim-result-msg').className = "text-lg font-black text-red-500 uppercase leading-tight mt-2";
+    }
+    loader(false);
+}
+
+window.onload = () => {
+    let u = localStorage.getItem('ultra_user');
+    if(u) currentUser = JSON.parse(u);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const lifafaId = urlParams.get('id');
+
+    setTimeout(() => loader(false), 800);
+
+    if (lifafaId) {
+        initLifafaClaim(lifafaId);
+    } else {
+        if(currentUser) { 
+            showScreen('main-dashboard'); 
+            startSync(); 
+        } else { 
+            showScreen('auth-screen'); 
+        }
+    }
+};
+</script>
+</body>
+</html>
